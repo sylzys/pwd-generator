@@ -1,0 +1,79 @@
+#!/usr/bin/ruby
+
+require 'optparse'
+require 'digest/md5'
+require 'digest/sha1'
+
+class PwdGenerator
+	def initialize
+	end
+
+	def generate(options)
+		## generating the whole tab with the options
+		tab = ('a'..'z').to_a + ('A'..'Z').to_a
+		tab +=  (0..9).to_a unless options[:no_digits]
+		tab +=  ['&', '@', '|', '!', '?', '*', '^', '-', '_','#', '$'] unless options[:no_symbols]
+
+
+		## getting a non-encrypted password with desired length
+		unless options[:length] > 3
+			raise ArgumentError, "Length must be an integer >= 4\n-l --length [INTEGER]" 
+		end
+
+		pwd = ""
+		options[:length].times{ pwd += tab.shuffle[0].to_s}
+
+		if !options[:encrypt].empty?
+			unless "md5".casecmp(options[:encrypt]) == 0 or "sha1".casecmp(options[:encrypt]) == 0
+				raise ArgumentError, "encryption supported: md5 - sha1" 
+			end
+
+			## MD5 encryption
+			if "md5".casecmp(options[:encrypt]) == 0
+				return "#{options[:encrypt]} encryption of #{pwd} ==> #{Digest::MD5.hexdigest(pwd)}"
+			end
+
+			## SHA1 encryption
+			if "sha1".casecmp(options[:encrypt]) == 0
+				return "#{options[:encrypt]} encryption of #{pwd} ==> #{Digest::SHA1.hexdigest(pwd)}"
+			end
+		end
+		pwd
+	end
+end
+
+options = {:length => 8, :encrypt => "", :no_digits => false, :no_symbols => false}
+
+option_parser = OptionParser.new do |opts|
+	opts.banner = "The simple Password Generator\nUsage: ./pwd-gen [options]"
+
+	## Get desired length for password
+	opts.on("-l", "--length [LENGTH]", "Length of the desired password (default is 8)") do |n|
+		options[:length] = n.to_i
+	end
+
+	## Check if digits are to be included or not	
+	opts.on("-d", "--no-digit", "Do not include digits in password") do |n|
+		options[:no_digits] = true
+	end
+
+	## Check if symbols are to be included or not		
+	opts.on("-s", "--no-symbol", "Do not include symbols in password")do |n|
+	options[:no_symbols] = true
+end
+	## get encryption type  
+	opts.on("-e", "--encrypt [md5|sha1]", "Encryption type of the desired password") do |type|
+		options[:encrypt] = type
+	end	
+end.parse!
+
+begin 
+	pwd = PwdGenerator.new()
+	puts pwd.generate(options)
+	
+rescue ArgumentError => ex
+	puts "ERROR: " + ex.message
+rescue Exception => e
+	puts e.message
+	puts e.backtrace.join("\n")
+end
